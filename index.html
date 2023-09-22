@@ -1,11 +1,8 @@
 <!doctype html>
 <!--
 todo
-- collect control properties into per-control object:
-	- value
-	- snap
-	- mod
-- store non-default values & clear default values
+- fix bug with "value = 1 - value" (when it's non-snapped)
+- add audio
 -->
 <html>
 	<head>
@@ -90,7 +87,7 @@ todo
 		const note = KEYS_TO_NOTES[keyCode][0];
 		const row = keyRows[KEYS_TO_NOTES[keyCode][1]];
 		if (isDown) {
-			midiChannels[row.channel].playNote(`${note}${currentGlobalOctave + row.octave}`, { attack: mouseController.controlProperties[11].value });
+			midiChannels[row.channel].playNote(`${note}${currentGlobalOctave + row.octave}`, { attack: mouseController.getControlProperties(11).value });
 		} else {
 			midiChannels[row.channel].stopNote(`${note}${currentGlobalOctave + row.octave}`);
 		}
@@ -215,7 +212,7 @@ todo
 		for (let i = 0; i < 4; i++) {
 			const axisId = i; // Store const from i for this closure
 			const controlProperties = mouseController.getAxisControlProperties(axisId);
-			setupRangeSelect(`control_${axisId}_Ui`, controlProperties.id, 130, evt => { onAxisControlChanged(axisId); }, 0, mouseController.MIDI_CONTROL_NAMES);
+			setupRangeSelect(`control_${axisId}_Ui`, controlProperties.id, 130, evt => { onAxisControlChanged(axisId); }, 0, MIDI_CONTROL_NAMES);
 			setupRangeSelect(`control_${axisId}_snapUi`, controlProperties.snap * 2 + 1, 3, evt => { onAxisSnapChanged(axisId); }, 0, MIDI_CONTROL_SNAP_CAPTIONS, true);
 			document.getElementById(`control_${axisId}_modUi`).value = controlProperties.modText;
 			document.getElementById(`control_${axisId}_modUi`).addEventListener('change', evt => { onAxisModChanged(axisId); });
