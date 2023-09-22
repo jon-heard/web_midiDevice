@@ -1,19 +1,5 @@
 
 class VibratoMaker {
-	#SPEED_ADJUST = .01;
-	#DEPTH_ADJUST = .15;
-
-	#enabled = true;
-	#pitchRange = 1;
-	#basePitch = 0.5;
-	#speed = .5;
-	#depth = .5;
-	#priorTime = 0;
-	#timing = 0;
-
-	#midiChannels = null;
-	#boundFnc_frame = null;
-
 	constructor(midiChannels) {
 		this.#midiChannels = midiChannels;
 		this.#boundFnc_frame = this.#frame.bind(this);
@@ -46,6 +32,20 @@ class VibratoMaker {
 	setSpeed(value) { this.#speed = value; }
 
 	setDepth(value) { this.#depth = value; }
+
+	#SPEED_ADJUST = .01;
+	#DEPTH_ADJUST = .15;
+
+	#enabled = true;
+	#pitchRange = 1;
+	#basePitch = 0.5;
+	#speed = .5;
+	#depth = .5;
+	#priorTime = 0;
+	#timing = 0;
+
+	#midiChannels = null;
+	#boundFnc_frame = null;
 
 	#frame(time) {
 		if (!this.#enabled) return;
