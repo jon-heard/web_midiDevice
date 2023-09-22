@@ -127,13 +127,17 @@ class MouseController extends EventTarget {
 		this.dispatchEvent(evt);
 	}
 
-	#getAxisValue(axisId) {
-		const controlProperties = this.getAxisControlProperties(axisId);
-		try {
-			return controlProperties.modFunction(controlProperties.value);
-		} catch (e) {
-			console.warn('Failed to run control mod:', controlProperties.modText);
-			return controlProperties.value;
+	#getAxisValue(axisId, unmodded) {
+		if (unmodded) {
+			return this.getAxisControlProperties(axisId).value;
+		} else {
+			const controlProperties = this.getAxisControlProperties(axisId);
+			try {
+				return controlProperties.modFunction(controlProperties.value);
+			} catch (e) {
+				console.warn('Failed to run control mod:', controlProperties.modText);
+				return controlProperties.value;
+			}
 		}
 	}
 
@@ -164,7 +168,7 @@ class MouseController extends EventTarget {
 		const canvasRect = this.#canvas.getBoundingClientRect();
 		this.#setVec(this.#pointerDragPosition, evt.clientX - canvasRect.left, evt.clientY - canvasRect.top);
 		this.#cpyVec(this.#pointerDragPositionStart, this.#pointerDragPosition);
-		this.#setVec(this.#pointerDragAxisValueStart, this.#getAxisValue(0), this.#getAxisValue(1));
+		this.#setVec(this.#pointerDragAxisValueStart, this.#getAxisValue(0, true), this.#getAxisValue(1, true));
 		this.#setVec(this.#zoomBoxCenter,
 			this.#pointerDragPositionStart[0] + (0.5 - this.#pointerDragAxisValueStart[0]) * this.#zoomSize,
 			this.#pointerDragPositionStart[1] + (0.5 - this.#pointerDragAxisValueStart[1]) * this.#zoomSize);
@@ -192,7 +196,7 @@ class MouseController extends EventTarget {
 			if (value < 0)
 			{
 				value = this.#pointerDragAxisValueStart[axisId] + (this.#pointerDragPosition[axisId] - this.#pointerDragPositionStart[axisId]) * this.#axisScale;
-				value = Math.max(Math.min(this.#getAxisValue(axisId), 1.0), 0.0);
+				value = Math.max(Math.min(value, 1.0), 0.0);
 			}
 			this.#setAxisValue(axisId, value);
 		}
@@ -251,7 +255,7 @@ class MouseController extends EventTarget {
 	#renderValuePosition() {
 		this.#context.fillStyle = 'blue';
 		this.#context.beginPath();
-		const values = [ this.getAxisControlProperties(0).value, this.getAxisControlProperties(1).value ];
+		const values = [ this.#getAxisValue(0, true), this.#getAxisValue(1, true) ];
 		this.#context.arc(this.#zoomBoxCenter[0] + (values[0] - 0.5) * this.#zoomSize, this.#zoomBoxCenter[1] + (values[1] - 0.5) * this.#zoomSize, this.#POS_CIRCLE_SIZE, 0, PI2);
 		this.#context.fill();
 	}
