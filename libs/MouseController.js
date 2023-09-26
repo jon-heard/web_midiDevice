@@ -207,13 +207,13 @@ class MouseController extends EventTarget {
 	}
 
 	#onWheel(evt) {
+		if (!this.#isDragging) return;
 		if (evt.deltaY < 0) {
 			this.#axisScale *= this.#ZOOM_RATE;
 		} else {
 			this.#axisScale /= this.#ZOOM_RATE;
 		}
 		this.#zoomSize = 1 / this.#axisScale;
-		this.#renderMouseUp();
 	}
 
 	#renderMouseDown() {
