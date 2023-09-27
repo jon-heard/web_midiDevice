@@ -19,6 +19,7 @@ todo
 		<script src="libs/webmidi.iife.js"></script>
 		<script src="libs/MouseController.js"></script>
 		<script src="libs/VibratoMaker.js"></script>
+		<script src="libs/AudioToMidi.js"></script>
 	</head>
 	<body>
 		<button id='allOffUi'>&#128721;</button><br/><br/>
@@ -33,6 +34,7 @@ todo
 		</table><br/><br/>
 
 		<table border='1'>
+			<tr><td colspan='4' style='text-align: left'> &nbsp; SHIFT = 1 &nbsp; &nbsp; CTRL = 2</td></tr>
 			<tr><td>&nbsp;X&nbsp;1&nbsp;</td><td><select id='control_0_Ui'></select></td><td><select id='control_0_snapUi'></select></td><td><input id='control_0_modUi'></input></td></tr>
 			<tr><td>&nbsp;Y&nbsp;1&nbsp;</td><td><select id='control_1_Ui'></select></td><td><select id='control_1_snapUi'></td><td><input id='control_1_modUi'></input></td></tr>
 			<tr><td>&nbsp;X&nbsp;2&nbsp;</td><td><select id='control_2_Ui'></select></td><td><select id='control_2_snapUi'></select></td><td><input id='control_2_modUi'></input></td></tr>
@@ -44,35 +46,51 @@ todo
 		<table border='1'>
 			<tr><td>Vibrato enabled</td><td><input id='vibratoEnabled' type='checkbox'></input></td></tr>
 			<tr><td>Pitch range</td><td><select id='pitchRangeUi'></select></td></tr>
-		</table><br/>
+		</table><br/><br/>
 
-		<br/><br/>
+		<table border='1'>
+			<tr><td>Audio-to-midi enabled</td><td><input id='audioToMidi_enabled' type='checkbox'></input></td></tr>
+			<tr><td>Current note</td><td id='audioToMidi_currentNote'>-</td></tr>
+			<tr><td>Note start delay</td><td><input id='audioToMidi_noteStartDelay' value='2'></input></td></tr>
+			<tr><td>Note pitched delay</td><td><input id='audioToMidi_notePitchedDelay' value='12'></input></td></tr>
+			<tr><td>Octave adjust</td><td><select id='audioToMidi_octaveAdjust'></select></td></tr>
+			<tr><td>Key</td><td><select id='audioToMidi_key'>
+				<option value='0'>Chromatic</option>
+				<option value='1'>C</option><option value='2'>C#</option><option value='3'>D</option>
+				<option value='4'>D#</option><option value='5'>E</option><option value='6'>F</option>
+				<option value='7'>F#</option><option value='8'>G</option><option value='9'>G#</option>
+				<option value='10'>A</option><option value='11'>A#</option><option value='12'>B</option>
+			</select></td></tr>
+		</table><br/><br/>
+
 		<a href='https://www.tobias-erichsen.de/software/loopmidi.html'>loopMIDI</a><br/>
 		<a href='https://anotherproducer.com/online-tools-for-musicians/midi-cc-list/'>Midi controls</a><br/>
 		<br/>
 	</body>
 </html>
 <script>
+	const NOTE_STRINGS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#', 'B'];
+
 	const MOUSE_UI_SIZE = 400;
 	FUNCTION_KEYS = {
 		192: () => { document.getElementById('globalOctaveUi').value = currentGlobalOctave = Math.min(currentGlobalOctave + 1, 8); },
 		9: () => { document.getElementById('globalOctaveUi').value = currentGlobalOctave = Math.max(currentGlobalOctave - 1, 0); },
 	};
 	const KEYS_TO_NOTES = {
-		49: ['c',0], 50: ['c#',0], 51: ['d',0], 52: ['d#',0], 53: ['e',0], 54: ['f',0], 55: ['f#',0], 56:  ['g',0], 57:  ['g#',0], 48:  ['a',0], 173: ['a#',0], 61:  ['b',0],
-		81: ['c',1], 87: ['c#',1], 69: ['d',1], 82: ['d#',1], 84: ['e',1], 89: ['f',1], 85: ['f#',1], 73:  ['g',1], 79:  ['g#',1], 80:  ['a',1], 219: ['a#',1], 221: ['b',1],
-		65: ['c',2], 83: ['c#',2], 68: ['d',2], 70: ['d#',2], 71: ['e',2], 72: ['f',2], 74: ['f#',2], 75:  ['g',2], 76:  ['g#',2], 59:  ['a',2], 222: ['a#',2], 13: ['b',2], 
-		90: ['c',3], 88: ['c#',3], 67: ['d',3], 86: ['d#',3], 66: ['e',3], 78: ['f',3], 77: ['f#',3], 188: ['g',3], 190: ['g#',3], 191: ['a',3],
+		49: ['C',0], 50: ['C#',0], 51: ['D',0], 52: ['D#',0], 53: ['E',0], 54: ['F',0], 55: ['F#',0],  56: ['G',0],  57: ['G#',0],  48: ['A',0], 173: ['A#',0],  61: ['B',0],
+		81: ['C',1], 87: ['C#',1], 69: ['D',1], 82: ['D#',1], 84: ['E',1], 89: ['F',1], 85: ['F#',1],  73: ['G',1],  79: ['G#',1],  80: ['A',1], 219: ['A#',1], 221: ['B',1],
+		65: ['C',2], 83: ['C#',2], 68: ['D',2], 70: ['D#',2], 71: ['E',2], 72: ['F',2], 74: ['F#',2],  75: ['G',2],  76: ['G#',2],  59: ['A',2], 222: ['A#',2],  13: ['B',2], 
+		90: ['C',3], 88: ['C#',3], 67: ['D',3], 86: ['D#',3], 66: ['E',3], 78: ['F',3], 77: ['F#',3], 188: ['G',3], 190: ['G#',3], 191: ['A',3],
 	};
 	const KEYS_TO_CONTROLLER = { /*up*/38: 0, /*down*/40: 2, /*left*/37: 4, /*right*/39: 6, /*backspace*/8: 8, /*back-slash*/220: 10, /*delete*/46: 12, /*space*/32: 14, /*home*/36: 16 };
-	const NOTES = ['c','c#','d','d#','e','f','f#','g','g#','a','a#'];
 	const MIDI_CONTROL_SNAP_CAPTIONS = { 0:'NONE', 1:'0%', 2:'50%', 3:'100%' }
 	const KEYS_TO_AXIS_PAIR = { /*shift*/16: 0, /*ctrl*/17: 1 };
 
 	let midiChannels = [null, null, null, null];
 	let currentGlobalOctave = 4;
 	let keyRows = [{octave: 0, channel: 0}, {octave: 1, channel: 0}, {octave: 2, channel: 0}, {octave: 3, channel: 0}];
-	let vibratoMaker;
+	let vibratoMaker = null;
+	let audioToMidi = null;
 
 	function onKeyDownOrUp(keyCode, isDown, channel = 0) {
 		if (FUNCTION_KEYS[keyCode] && isDown) FUNCTION_KEYS[keyCode]();
@@ -92,20 +110,82 @@ todo
 		}
 	}
 
+	function hitNote(noteName) {
+		if (noteName === '-') {
+			midiChannels[0].sendControlChange(119, 14);
+			setTimeout(() => midiChannels[0].sendControlChange(119, 15), 5);
+		} else if (noteName === '=') {
+			midiChannels[0].sendControlChange(119, 8);
+			setTimeout(() => midiChannels[0].sendControlChange(119, 9), 5);
+		} else {
+			midiChannels[0].playNote(noteName, { attack: mouseController.getControlProperties(11).value });
+			setTimeout(() => midiChannels[0].stopNote(noteName), 5);
+		}
+	}
+
+	function updateCurrentNote(noteName, isStable) {
+		const ui = document.getElementById('audioToMidi_currentNote')
+		ui.innerText = noteName;
+		ui.style.color = isStable ? 'yellow' : 'grey';
+	}
+
 	function stopAllSound() {
 		for (let channelId = 0; channelId < midiChannels.length; channelId++) {
 			midiChannels[channelId].sendAllSoundOff();
 			midiChannels[channelId].sendAllNotesOff();
-			for (let noteId = 0; noteId < NOTES.length; noteId++) {
+			for (let noteId = 0; noteId < NOTE_STRINGS.length; noteId++) {
 				for (let octaveId = 0; octaveId < 8; octaveId++) {
-					midiChannels[channelId].stopNote(`${NOTES[noteId]}${octaveId}`);				
+					midiChannels[channelId].stopNote(`${NOTE_STRINGS[noteId]}${octaveId}`);				
 				}
 			}
 		}
 	}
 
-	function getVibratoEnabled(value) {
+	function setVibratoEnabled(value) {
 		vibratoMaker.setEnabled(value);
+	}
+
+	function audioToMidi_setEnabled(value) {
+		if (value && !audioToMidi) {
+			audioToMidi = new AudioToMidi();
+			audioToMidi.addEventListener('midiSignal', evt => hitNote(evt.noteName));
+			audioToMidi.addEventListener('currentNoteChanged', evt => updateCurrentNote(evt.noteName, evt.isStable));
+			audioToMidi_setNoteStartDelay(document.getElementById('audioToMidi_noteStartDelay').value);
+			audioToMidi_setNotePitchedDelay(document.getElementById('audioToMidi_notePitchedDelay').value);
+			audioToMidi_setOctaveAdjust(document.getElementById('audioToMidi_octaveAdjust').value);
+			audioToMidi_setKey(document.getElementById('audioToMidi_key').value - 1);
+			return;
+		} else if (audioToMidi) {
+			audioToMidi.setEnabled(value);
+		}
+	}
+
+	function audioToMidi_setNoteStartDelay(value) {
+		if (!audioToMidi) return;
+		value = parseInt(value, 10);
+		if (typeof value !== 'number') return;
+		audioToMidi.setNoteStartDelay(value);
+	}
+
+	function audioToMidi_setNotePitchedDelay(value) {
+		if (!audioToMidi) return;
+		value = parseInt(value, 10);
+		if (typeof value !== 'number') return;
+		audioToMidi.setNotePitchedDelay(value);
+	}
+
+	function audioToMidi_setOctaveAdjust(value) {
+		localStorage['midi_audioToMidi_octaveAdjust'] = value;
+		if (!audioToMidi) return;
+		value = parseInt(value, 10);
+		audioToMidi.setOctaveAdjust(value);
+	}
+
+	function audioToMidi_setKey(value) {
+		localStorage['midi_audioToMidi_key'] = value;
+		if (!audioToMidi) return;
+		value = parseInt(value, 10);
+		audioToMidi.setKey(value);
 	}
 
 	// Mouse input
@@ -163,25 +243,7 @@ todo
 		}
 		vibratoMaker = new VibratoMaker(midiChannels);
 
-		// NOTE - the following event listeners are setup here as they assume WebMidi is properly initialized.  If init fails, we won't setup these listeners.
-		// Keyboard (computer) input
-		document.addEventListener('keydown', evt => {
-			if (evt.target.tagName == 'INPUT') return;
-			evt.preventDefault();
-			if (evt.repeat) return;
-			onKeyDownOrUp(evt.keyCode, true);
-		});
-		document.addEventListener('keyup', evt => {
-			onKeyDownOrUp(evt.keyCode, false);
-		});
-		// Stop button
-		document.getElementById('allOffUi').addEventListener('click', stopAllSound);
-		// Vibrato enabled
-		document.getElementById('vibratoEnabled').addEventListener('change', evt => getVibratoEnabled(evt.target.checked));
-		document.getElementById('vibratoEnabled').checked = false;
-		getVibratoEnabled(false);
-
-		// Range select uis (populate and setup reactions)
+		// Setup a select element (populate with options and setup reactions)
 		function setupRangeSelect(selectUi, defaultValue, maxValue, listener, minValue, captions, showCaptionsOnly) {
 			selectUi = document.getElementById(selectUi);
 			minValue ||= 0;
@@ -198,7 +260,23 @@ todo
 				selectUi.addEventListener('change', listener);
 			}
 		}
+
+		// Many event listeners are setup here as they require WebMidi to be initialized to work.
+		// If WebMidi init fails, these listeners just aren't setup.
+
+		// Keyboard (computer) input
+		document.addEventListener('keydown', evt => {
+			if (evt.target.tagName == 'INPUT') return;
+			evt.preventDefault();
+			if (evt.repeat) return;
+			onKeyDownOrUp(evt.keyCode, true);
+		});
+		document.addEventListener('keyup', evt => onKeyDownOrUp(evt.keyCode, false));
+		// Stop button
+		document.getElementById('allOffUi').addEventListener('click', stopAllSound);
+		// Octave select
 		setupRangeSelect('globalOctaveUi', currentGlobalOctave, 8, evt => { currentGlobalOctave = parseInt(evt.target.value, 10); });
+		// Keyboard (computer) rows
 		setupRangeSelect('row1_OctaveUi',  keyRows[0].octave, 8,  evt => { keyRows[0].octave =  parseInt(evt.target.value, 10); });
 		setupRangeSelect('row2_OctaveUi',  keyRows[1].octave, 8,  evt => { keyRows[1].octave =  parseInt(evt.target.value, 10); });
 		setupRangeSelect('row3_OctaveUi',  keyRows[2].octave, 8,  evt => { keyRows[2].octave =  parseInt(evt.target.value, 10); });
@@ -207,15 +285,28 @@ todo
 		setupRangeSelect('row2_channelUi', keyRows[1].channel, 4, evt => { keyRows[1].channel = parseInt(evt.target.value, 10); });
 		setupRangeSelect('row3_channelUi', keyRows[2].channel, 4, evt => { keyRows[2].channel = parseInt(evt.target.value, 10); });
 		setupRangeSelect('row4_channelUi', keyRows[3].channel, 4, evt => { keyRows[3].channel = parseInt(evt.target.value, 10); });
-		setupRangeSelect('pitchRangeUi', 1, 12, evt => { vibratoMaker.setPitchRange(parseInt(evt.target.value, 10)); }, 1);
+		// Mouse controller
 		for (let i = 0; i < 4; i++) {
 			const axisId = i; // Store const from i for this closure
 			const controlProperties = mouseController.getAxisControlProperties(axisId);
-			setupRangeSelect(`control_${axisId}_Ui`, controlProperties.id, 130, evt => { onAxisControlChanged(axisId); }, 0, MIDI_CONTROL_NAMES);
-			setupRangeSelect(`control_${axisId}_snapUi`, controlProperties.snap * 2 + 1, 3, evt => { onAxisSnapChanged(axisId); }, 0, MIDI_CONTROL_SNAP_CAPTIONS, true);
+			setupRangeSelect(`control_${axisId}_Ui`, controlProperties.id, 130, evt => onAxisControlChanged(axisId), 0, MIDI_CONTROL_NAMES);
+			setupRangeSelect(`control_${axisId}_snapUi`, controlProperties.snap * 2 + 1, 3, evt => onAxisSnapChanged(axisId), 0, MIDI_CONTROL_SNAP_CAPTIONS, true);
 			document.getElementById(`control_${axisId}_modUi`).value = controlProperties.modText;
-			document.getElementById(`control_${axisId}_modUi`).addEventListener('change', evt => { onAxisModChanged(axisId); });
+			document.getElementById(`control_${axisId}_modUi`).addEventListener('change', evt => onAxisModChanged(axisId));
 		}
+		// Vibrato
+		document.getElementById('vibratoEnabled').addEventListener('change', evt => setVibratoEnabled(evt.target.checked));
+		document.getElementById('vibratoEnabled').checked = false;
+		setVibratoEnabled(false);
+		setupRangeSelect('pitchRangeUi', 1, 12, evt => vibratoMaker.setPitchRange(parseInt(evt.target.value, 10)), 1);
+		// AudioToMidi
+		document.getElementById('audioToMidi_enabled').addEventListener('change', evt => audioToMidi_setEnabled(evt.target.checked));
+		document.getElementById('audioToMidi_enabled').checked = false;
+		document.getElementById('audioToMidi_noteStartDelay').addEventListener('change', evt => audioToMidi_setNoteStartDelay(evt.target.value));
+		document.getElementById('audioToMidi_notePitchedDelay').addEventListener('change', evt => audioToMidi_setNotePitchedDelay(evt.target.value));
+		setupRangeSelect('audioToMidi_octaveAdjust', parseInt((localStorage['midi_audioToMidi_octaveAdjust'] ?? -4), 10), 4, evt => audioToMidi_setOctaveAdjust(evt.target.value), -4);
+		document.getElementById('audioToMidi_key').addEventListener('change', evt => audioToMidi_setKey(evt.target.value - 1));
+		document.getElementById('audioToMidi_key').value = parseInt((localStorage['midi_audioToMidi_key'] ?? -1), 10) + 1;
 	})();
 
 </script>

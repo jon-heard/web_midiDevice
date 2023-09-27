@@ -58,10 +58,10 @@ MidiControlChange119:
 		case 13:
 			return
 		case 14:
-			ControlSend, AfxFrameOrView140su2, {F6 down}, OpenMPT
+			ControlSend, AfxFrameOrView140su2, {space down}, OpenMPT
 			return
 		case 15:
-			ControlSend, AfxFrameOrView140su2, {F6 up}, OpenMPT
+			ControlSend, AfxFrameOrView140su2, {space up}, OpenMPT
 			return
 		case 16:
 			ControlSend, AfxFrameOrView140su2, ^{Home}, OpenMPT
